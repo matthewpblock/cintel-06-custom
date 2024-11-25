@@ -1,1 +1,6 @@
-
+ipyleaflet
+faicons
+geopy
+shiny
+shinywidgets
+geopandas

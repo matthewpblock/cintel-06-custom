@@ -8,6 +8,9 @@ Summative project for Continuous Intelligence course
 ---------------------
 ## Installation Instructions
 ---------------------
+Creat the Virtual Environment with:
+python -m venv .venv
+
 Activate virual environment with:
 .venv\Scripts\activate
 -
