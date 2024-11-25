@@ -6,3 +6,4 @@ shinywidgets
 geopandas
 ipywidgets
 traitlets
+requests
