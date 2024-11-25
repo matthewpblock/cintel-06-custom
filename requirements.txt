@@ -4,3 +4,5 @@ geopy
 shiny
 shinywidgets
 geopandas
+ipywidgets
+traitlets
