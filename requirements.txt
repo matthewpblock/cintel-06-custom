@@ -7,3 +7,6 @@ geopandas
 ipywidgets
 traitlets
 requests
+pathlib
+pandas
+shinylive
