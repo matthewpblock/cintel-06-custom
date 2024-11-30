@@ -8,7 +8,7 @@ from shiny.express import input, render, ui
 from shinywidgets import render_widget
 
 import ipyleaflet as ipyl
-from ipyleaflet import Map, Marker, MarkerCluster, GeoData, Popup
+from ipyleaflet import Map, GeoData
 from geopy.distance import geodesic
 from ipywidgets import HTML
 
@@ -45,11 +45,7 @@ def find_nearest_airport(lat, lon):
 #------------------------------#
 infile = Path(__file__).parent / "custom_app_weather_data.csv"
 df = pd.read_csv(infile, sep=';')
-# Convert DataFrame to GeoDataFrame
-csv_geodata = gpd.GeoDataFrame(
-        df, 
-        geometry=gpd.points_from_xy(df.lon, df.lat), crs="EPSG:4326"
-    )
+
 # Convert the 'validdate' column to datetime type 
 df['datetime'] = pd.to_datetime(df['validdate'], format='%Y-%m-%dT%H:%M:%SZ') 
 
@@ -67,11 +63,17 @@ df['nearest_airport'] = df.apply(lambda row: find_nearest_airport(row['lat'], ro
 
 @reactive.calc()
 def reactive_calc_combined():
+    df_filtered = filtered_data()
     threshold = input.wind_threshold()
-    df_above_threshold = df_display[df_display['wind_speed_10m:kn'] >= threshold]
+    df_above_threshold = df_filtered[df_filtered['wind_speed_10m:kn'] >= threshold]
 
-    df_below_threshold = df_display[df_display['wind_speed_10m:kn'] < threshold]
-    return df_above_threshold, df_below_threshold   
+    df_below_threshold = df_filtered[df_filtered['wind_speed_10m:kn'] < threshold]
+
+    gdf_filtered = gpd.GeoDataFrame(
+        folium_filter(), 
+        geometry=gpd.points_from_xy(folium_filter().lon, folium_filter().lat), crs="EPSG:4326"
+    )
+    return df_above_threshold, df_below_threshold, gdf_filtered  
 
 @reactive.Effect
 def update_date_choices():
@@ -89,28 +91,43 @@ df_display = df[['Date_Format', 'nearest_airport', 'wind_speed_10m:kn', 't_2m:F'
 #------------------------------#
 # Create the map
 #------------------------------#
-# Function to create the ipyleaflet map 
+# Function to create the Folium map 
 def create_map(): 
-    m = Map(center=airfield_coords["HNL"], zoom=6, close_popup_on_click=False)
-    geo_data = GeoData(geo_dataframe = csv_geodata, name = 'Airfields')
-    #markers = MarkerCluster(location=airfield_coords, title= "test title", child=popup_message)
-    #popup_message = HTML()
-    #popup_message.value = "Hello <b>World</b>"
-    #markers.popup = popup_message
-    #popup_message.placeholder = "Some HTML"
-    #popup_message.description = "Some HTML"
-
-    m.add(geo_data)
+    bounds = [[df['lat'].min() - 1, df['lon'].min() - 1], [df['lat'].max() + 1, df['lon'].max() + 1]]
+    m = folium.Map(center=airfield_coords["HNL"], zoom_start=15)
+    # Add markers with conditional colors to the map
+    for _, row in folium_filter().iterrows():
+            threshold = input.wind_threshold()
+            marker_color = get_marker_color(row['wind_speed_10m:kn'], threshold)
+            folium.Marker(
+                location=[row['lat'], row['lon']],
+                popup=folium.Popup(row['nearest_airport'], max_width=300),
+                icon=folium.Icon(color=marker_color)
+            ).add_to(m)
+    #markers = MarkerCluster(location=airfield_coords, title= "test title", name="test name")
+    #marker_color = get_marker_color(csv_geodata["wind_speed_10m:kn"], input.wind_threshold())
+    #folium.marker(location = geo_data, icon=folium.Icon(color=marker_color)).add_to(m)
+    #m.add(geo_data)
     #m.add_layer(markers) 
     # Popup associated to a layer
+    m.fit_bounds(bounds)
+
     return m
 
+def get_marker_color(wind_speed, threshold):
+    if wind_speed < threshold:
+        return 'green'
+    else:
+        return 'red'
 #------------------------------#
 # User interface
 #------------------------------#
+ui.page_opts(title="Windspeeds Over Hawaiian Airfields", fillable=False) 
 # Sidebar
 #------------------------------#
-with ui.sidebar():    
+with ui.sidebar(width=450):    
+    ui.input_select("date", "Choose Date", choices=df['Date_Format'].unique().tolist())
+    
     ui.input_slider('wind_threshold', 'Wind Speed Threshold', min=1, max=35, value=5)
     
     #ui.input_select("center", "Re-Center Map", choices=list(airfield_coords.keys()))
@@ -118,59 +135,68 @@ with ui.sidebar():
     ui.input_checkbox_group(
         "airfields",
         "Choose Airfields:",
-        airports, selected=airports
+        choices=df['nearest_airport'].unique().tolist(), selected=df['nearest_airport'].unique().tolist()
     )
-    
-    ui.input_select("date", "Choose Date", choices=df['Date_Format'].unique().tolist())
-    
+
     ui.hr()
     
     @render.ui
-    def sidebar_explorer():
-        return csv_geodata.explore(marker_kwds={"radius": 7},tooltip=True, tooltip_sticky=True, )
+    def folio():
+        return create_map()
 
 
 # Main panel
 #------------------------------#
 
-with ui.navset_card_underline():
-
-    with ui.nav_panel("Above Data frame"):
+with ui.layout_columns():
+    with ui.card():
+        ui.card_header("CAUTION: High Winds!")
         @render.data_frame
         def table_above():
             # Fetch from the reactive calc function
-            df_above_threshold, df_below_threshold = reactive_calc_combined()
+            df_above_threshold, df_below_threshold, gdf_filtered= reactive_calc_combined()
             return render.DataGrid(df_above_threshold)
-
-    with ui.nav_panel("Map"):
-        @render_widget
-        def map():
-            return create_map()
         
-    with ui.nav_panel("Explore"):
+    with ui.card():
         @render.ui
         def explorer():
-            return csv_geodata.explore(marker_kwds={"radius": 7},tooltip=True, tooltip_sticky=True, )
-
-    with ui.nav_panel("Folium"):
-        @render_widget
-        def folio():
-            return create_map()
-
+            df_above_threshold, df_below_threshold, gdf_filtered = reactive_calc_combined()
+            return gdf_filtered.explore(marker_kwds={"radius": 7},tooltip=True, tooltip_sticky=True, )
+                                       
 with ui.card():
+    ui.card_header('Airfields Below Wind Threshold: Good to fly!')
     @render.data_frame
     def table_below():
-        df_above_threshold, df_below_threshold = reactive_calc_combined()
+        df_above_threshold, df_below_threshold, gdf_filtered = reactive_calc_combined()
         return render.DataGrid(df_below_threshold)
-
+          
+# Convert DataFrame to GeoDataFrame
+csv_geodata = gpd.GeoDataFrame(
+        df, 
+        geometry=gpd.points_from_xy(df.lon, df.lat), crs="EPSG:4326"
+    )
+           
 @reactive.effect
 def _():
     map.widget.center = airfield_coords[input.center()]
     
-@reactive.effect
-def date_choices():
-    input_date_choices = df['Date_Format'].unique()
-    return ("date", {"choices": list(unique_dates)})
+@reactive.calc
+def filtered_data():
+    FilterMatch = df_display["Date_Format"].isin([input.date()]) & df_display['nearest_airport'].isin(input.airfields())
+    return df_display[FilterMatch] 
 
+@reactive.calc
+def filtered_gdf():
+    GeoMatch = csv_geodata["Date_Format"].isin([input.date()]) & csv_geodata['nearest_airport'].isin(input.airfields())
+    return csv_geodata[GeoMatch] 
+
+gdf_filtered = gpd.GeoDataFrame(
+        csv_geodata, 
+        geometry=gpd.points_from_xy(df.lon, df.lat), crs="EPSG:4326")
+
+@reactive.calc
+def folium_filter():
+    FolioMatch = df["Date_Format"].isin([input.date()]) & df['nearest_airport'].isin(input.airfields())
+    return df[FolioMatch] 
 
 print("App loaded")
