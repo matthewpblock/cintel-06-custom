@@ -41,7 +41,7 @@ def find_nearest_airport(lat, lon):
     min_distance = float('inf')
     nearest_airport = None
     for airport, coords in airfield_coords.items():
-        distance = geodesic((lat, lon), coords).miles
+        distance = ((lat - coords[0])**2 + (lon - coords[1])**2)**0.5  # Euclidean distance
         if distance < min_distance:
             min_distance = distance
             nearest_airport = airport
