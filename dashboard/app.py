@@ -21,6 +21,15 @@ airfield_coords = {
 # Extracting airport codes from the dictionary
 airports = list(airfield_coords.keys())
 
+# Dictionary to map original column headers to more readable alternatives
+column_rename_dict = {
+    'validdate': 'DateTime',
+    't_2m:F': 'Temp. (F)',
+    'wind_speed_10m:kn': 'Wind Speed (kn)',
+    'nearest_airport': 'Airport',
+    'Date_Format': 'Day'
+}
+
 #------------------------------#
 # Helper functions
 #------------------------------#
@@ -48,9 +57,12 @@ df['datetime'] = pd.to_datetime(df['validdate'], format='%Y-%m-%dT%H:%M:%SZ')
 
 # Extract the date part 
 df['date'] = df['datetime'].dt.date
-df['Date_Format'] = df['datetime'].dt.strftime('%a-%b-%d')
+df['Day'] = df['datetime'].dt.strftime('%a-%b-%d')
 
-df['nearest_airport'] = df.apply(lambda row: find_nearest_airport(row['lat'], row['lon']), axis=1)
+df['Airport'] = df.apply(lambda row: find_nearest_airport(row['lat'], row['lon']), axis=1)
+
+# Rename columns using the dictionary
+df.rename(columns=column_rename_dict, inplace=True)
 
 # Create Dataframe filters
 #------------------------------#
@@ -65,10 +77,10 @@ def reactive_calc_combined():
     threshold = input.wind_threshold()
     
     # Filter data above the wind speed threshold
-    df_above_threshold = df_filtered[df_filtered['wind_speed_10m:kn'] >= threshold]
+    df_above_threshold = df_filtered[df_filtered['Wind Speed (kn)'] >= threshold]
     
     # Filter data below the wind speed threshold
-    df_below_threshold = df_filtered[df_filtered['wind_speed_10m:kn'] < threshold]
+    df_below_threshold = df_filtered[df_filtered['Wind Speed (kn)'] < threshold]
     
     # Create a GeoDataFrame for the filtered data
     gdf_filtered = gpd.GeoDataFrame(
@@ -80,7 +92,7 @@ def reactive_calc_combined():
     return df_above_threshold, df_below_threshold, gdf_filtered  
 
 # Create a display DataFrame with selected columns
-df_display = df[['Date_Format', 'nearest_airport', 'wind_speed_10m:kn', 't_2m:F']]
+df_display = df[['Day', 'Airport', 'Wind Speed (kn)', 'Temp. (F)']]
 
 #------------------------------#
 # Create the map
@@ -91,7 +103,7 @@ def create_map():
     bounds = [[df['lat'].min() - 1, df['lon'].min() - 1], [df['lat'].max() + 1, df['lon'].max() + 1]]
     
     # Initialize the Folium map centered at Honolulu International Airport with a starting zoom level of 15
-    m = folium.Map(location=airfield_coords["HNL"], zoom_start=15)
+    m = folium.Map(location=airfield_coords["HNL"], zoom_control=False, scrollWheelZoom=False)
     
     # Add markers with conditional colors to the map
     for _, row in folium_filter().iterrows():
@@ -99,12 +111,12 @@ def create_map():
         threshold = input.wind_threshold()
         
         # Determine the marker color based on the wind speed and threshold
-        marker_color = get_marker_color(row['wind_speed_10m:kn'], threshold)
+        marker_color = get_marker_color(row['Wind Speed (kn)'], threshold)
         
         # Add a marker to the map with the determined color
         folium.Marker(
             location=[row['lat'], row['lon']],
-            popup=folium.Popup(row['nearest_airport'], max_width=300),
+            popup=folium.Popup(row['Airport'], max_width=300),
             icon=folium.Icon(color=marker_color)
         ).add_to(m)
     
@@ -132,7 +144,7 @@ ui.page_opts(title="Windspeeds Over Hawaiian Airfields", fillable=False)
 #------------------------------#
 with ui.sidebar(width=450):    
     # Dropdown to select a date from the unique dates in the DataFrame
-    ui.input_select("date", "Choose Date", choices=df['Date_Format'].unique().tolist())
+    ui.input_select("date", "Choose Date", choices=df['Day'].unique().tolist())
     
     # Slider to set the wind speed threshold
     ui.input_slider('wind_threshold', 'Wind Speed Threshold', min=1, max=35, value=5)
@@ -141,7 +153,7 @@ with ui.sidebar(width=450):
     ui.input_checkbox_group(
         "airfields",
         "Choose Airfields:",
-        choices=df['nearest_airport'].unique().tolist(), selected=df['nearest_airport'].unique().tolist()
+        choices=df['Airport'].unique().tolist(), selected=df['Airport'].unique().tolist()
     )
 
     # Horizontal rule for visual separation
@@ -167,13 +179,13 @@ with ui.layout_columns():
             # Return a DataGrid for data above the wind threshold
             return render.DataGrid(df_above_threshold)
         
-    with ui.card():
+    with ui.card(full_screen=True):
         @render.ui
         def explorer():
             # Fetch data from the reactive calc function
             df_above_threshold, df_below_threshold, gdf_filtered = reactive_calc_combined()
             # Return an interactive map for the filtered GeoDataFrame
-            return gdf_filtered.explore(marker_kwds={"radius": 7}, tooltip=True, tooltip_sticky=True)
+            return gdf_filtered.explore(zoom_start=6, marker_kwds={"radius": 7}, tooltip=['Airport', 'lat', 'lon', 'Wind Speed (kn)', "Temp. (F)"], tooltip_sticky=True, highlight=True, min_zoom=4, max_zoom=12)
                                        
 with ui.card():
     # Card header indicating airfields below wind threshold
@@ -190,14 +202,14 @@ with ui.card():
 @reactive.calc
 def filtered_data():
     # Filter the display DataFrame based on the selected date and nearest airports
-    FilterMatch = df_display["Date_Format"].isin([input.date()]) & df_display['nearest_airport'].isin(input.airfields())
+    FilterMatch = df_display["Day"].isin([input.date()]) & df_display['Airport'].isin(input.airfields())
     # Return the filtered display DataFrame
     return df_display[FilterMatch] 
 
 @reactive.calc
 def folium_filter():
     # Filter the map DataFrame based on the selected date and nearest airports
-    FolioMatch = df["Date_Format"].isin([input.date()]) & df['nearest_airport'].isin(input.airfields())
+    FolioMatch = df["Day"].isin([input.date()]) & df['Airport'].isin(input.airfields())
     # Return the filtered map DataFrame
     return df[FolioMatch] 
 
