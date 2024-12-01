@@ -1,12 +1,8 @@
-ipyleaflet
 faicons
 geopy
 shiny
 shinywidgets
 geopandas
-ipywidgets
-traitlets
 requests
 pathlib
 pandas
-shinylive

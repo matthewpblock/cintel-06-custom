@@ -1,9 +1,10 @@
-# cintel-06-custom
+# cintel-06-custom (Windspeeds over Airfields)
 Summative project for Continuous Intelligence course
 
 ---------------------
 ## Description
 ---------------------
+This application visualizes wind speeds over various airfields using a Folium map. Users can select a date, set a wind speed threshold, and choose specific airfields to display. The application provides a visual representation of wind speeds with markers colored based on the wind speed threshold and displays data in tabular format.
 
 ---------------------
 ## Installation Instructions
@@ -31,6 +32,7 @@ pip install -r requirements.txt
 ## Example Screenshots
 ---------------------
 ![Example Screenshot]()
+
 
 ---------------------
 ## Acknowledgements
