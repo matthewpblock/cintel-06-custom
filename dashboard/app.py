@@ -3,10 +3,11 @@ import pandas as pd
 import geopandas as gpd
 from shiny import reactive
 from shiny.express import input, render, ui
-from geopy.distance import geodesic
-import folium
 import matplotlib
 import mapclassify
+from ipyleaflet import Map, Marker, Popup, LayerGroup
+from ipywidgets import HTML
+from shinywidgets import render_widget
 
 #------------------------------#
 # Airfield coordinates
@@ -99,31 +100,55 @@ df_display = df[['Day', 'Airport', 'Wind Speed (kn)', 'Temp. (F)']]
 #------------------------------#
 # Create the map
 #------------------------------#
-# Function to create the Folium map 
-def create_map(): 
+# Function to create the Folium map (commented out for ipyleaflet map, due to loading issues with ShinyLive and GitHub)
+#def create_map(): 
     # Calculate the bounding box for the map based on the latitude and longitude of the data points
-    bounds = [[df['lat'].min() - 1, df['lon'].min() - 1], [df['lat'].max() + 1, df['lon'].max() + 1]]
+    #bounds = [[df['lat'].min() - 1, df['lon'].min() - 1], [df['lat'].max() + 1, df['lon'].max() + 1]]
     
     # Initialize the Folium map centered at Honolulu International Airport with a starting zoom level of 15
-    m = folium.Map(location=airfield_coords["HNL"], zoom_control=False, scrollWheelZoom=False)
+    #m = folium.Map(location=airfield_coords["HNL"], zoom_control=False, scrollWheelZoom=False)
     
     # Add markers with conditional colors to the map
-    for _, row in folium_filter().iterrows():
+    #for _, row in folium_filter().iterrows():
         # Get the wind speed threshold from user input
-        threshold = input.wind_threshold()
+        #threshold = input.wind_threshold()
         
         # Determine the marker color based on the wind speed and threshold
-        marker_color = get_marker_color(row['Wind Speed (kn)'], threshold)
+        #marker_color = get_marker_color(row['Wind Speed (kn)'], threshold)
         
         # Add a marker to the map with the determined color
-        folium.Marker(
-            location=[row['lat'], row['lon']],
-            popup=folium.Popup(row['Airport'], max_width=300),
-            icon=folium.Icon(color=marker_color)
-        ).add_to(m)
+        #folium.Marker(
+        #    location=[row['lat'], row['lon']],
+        #    popup=folium.Popup(row['Airport'], max_width=300),
+        #    icon=folium.Icon(color=marker_color)
+        #).add_to(m)
     
     # Fit the map to the calculated bounds
-    m.fit_bounds(bounds)
+    #m.fit_bounds(bounds)
+    
+    # Return the created map
+    #return m
+#------------------------------#
+# New Ipyleaflet map
+#------------------------------#
+# Function to create the ipyleaflet map
+def create_ipyleaflet_map():
+    # Calculate the center of the map
+    center = [df['lat'].mean(), df['lon'].mean()]
+    
+    # Initialize the ipyleaflet map
+    m = Map(center=center, zoom=6)
+    markers = LayerGroup()
+    # Add markers to the map with conditional colors
+    for _, row in folium_filter().iterrows():
+        marker_color = get_marker_color(row['Wind Speed (kn)'], input.wind_threshold())
+        marker = Marker(
+            location=(row['lat'], row['lon']),
+            title=row['Airport'],
+            draggable=False,)
+        markers.add(marker)
+        
+    m.add(markers)
     
     # Return the created map
     return m
@@ -162,9 +187,14 @@ with ui.sidebar(width=450):
     ui.hr()
     
     # Render the Folium map
-    @render.ui
-    def folio():
-        return create_map()
+    #@render.ui
+    #def folio():
+    #    return create_map()
+    
+    #Ipyleaflet map
+    @render_widget
+    def leaflet():
+        return create_ipyleaflet_map()
 
 # Main panel
 #------------------------------#

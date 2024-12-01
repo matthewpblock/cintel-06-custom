@@ -9,3 +9,5 @@ pandas
 folium
 matplotlib
 mapclassify
+ipyleaflet
+ipywidgets
