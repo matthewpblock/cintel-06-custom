@@ -188,11 +188,6 @@ with ui.sidebar(width=450):
     #@render.ui
     #def folio():
     #    return create_map()
-    
-    #Ipyleaflet map
-    @render_widget
-    def leaflet():
-        return create_ipyleaflet_map()
 
 # Main panel
 #------------------------------#
@@ -210,13 +205,17 @@ with ui.layout_columns():
             return render.DataGrid(df_above_threshold)
         
     with ui.card(full_screen=True):
-        @render.ui
-        def explorer():
+        #@render.ui
+        #def explorer():
             # Fetch data from the reactive calc function
-            df_above_threshold, df_below_threshold, gdf_filtered = reactive_calc_combined()
+            #df_above_threshold, df_below_threshold, gdf_filtered = reactive_calc_combined()
             # Return an interactive map for the filtered GeoDataFrame
-            return gdf_filtered.explore(zoom_start=6, marker_kwds={"radius": 7}, tooltip=['Airport', 'lat', 'lon', 'Wind Speed (kn)', "Temp. (F)"], tooltip_sticky=True, highlight=True, min_zoom=4, max_zoom=12)
-                                       
+            #return gdf_filtered.explore(zoom_start=6, marker_kwds={"radius": 7}, tooltip=['Airport', 'lat', 'lon', 'Wind Speed (kn)', "Temp. (F)"], tooltip_sticky=True, highlight=True, min_zoom=4, max_zoom=12)
+        #Ipyleaflet map
+        @render_widget
+        def leaflet():
+            return create_ipyleaflet_map()
+                           
 with ui.card():
     # Card header indicating airfields below wind threshold
     ui.card_header('Airfields Below Wind Threshold: Good to fly!')
