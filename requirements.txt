@@ -1,5 +1,4 @@
 faicons
-geopy
 shiny
 shinywidgets
 shinylive
