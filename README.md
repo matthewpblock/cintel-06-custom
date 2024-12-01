@@ -12,7 +12,7 @@ This application visualizes wind speeds over various airfields using a Folium ma
 Creat the Virtual Environment with:
 python -m venv .venv
 
-Activate virual environment with:
+Activate virtual environment with:
 .venv\Scripts\activate
 -
 Install requirements with:

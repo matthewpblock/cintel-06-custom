@@ -2,7 +2,11 @@ faicons
 geopy
 shiny
 shinywidgets
+shinylive
 geopandas
 requests
 pathlib
 pandas
+folium
+matplotlib
+mapclassify

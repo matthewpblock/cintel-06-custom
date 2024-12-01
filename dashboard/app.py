@@ -5,6 +5,8 @@ from shiny import reactive
 from shiny.express import input, render, ui
 from geopy.distance import geodesic
 import folium
+import matplotlib
+import mapclassify
 
 #------------------------------#
 # Airfield coordinates
