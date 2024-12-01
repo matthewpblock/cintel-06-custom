@@ -3,9 +3,7 @@ import pandas as pd
 import geopandas as gpd
 from shiny import reactive
 from shiny.express import input, render, ui
-import matplotlib
-import mapclassify
-from ipyleaflet import Map, Marker, Popup, LayerGroup
+from ipyleaflet import Map, Marker, Popup, LayerGroup, basemaps
 from ipywidgets import HTML
 from shinywidgets import render_widget
 
@@ -137,7 +135,7 @@ def create_ipyleaflet_map():
     center = [df['lat'].mean(), df['lon'].mean()]
     
     # Initialize the ipyleaflet map
-    m = Map(center=center, zoom=6)
+    m = Map(basemap=basemaps.Esri.WorldImagery, center=center, zoom=6)
     markers = LayerGroup()
     # Add markers to the map with conditional colors
     for _, row in folium_filter().iterrows():
