@@ -1,5 +1,5 @@
-# cintel-06-custom (Windspeeds over Airfields)
-Summative project for Continuous Intelligence course
+# Weather over Airfields
+Summative project for Continuous Intelligence course, continuing development for portfolio piece
 
 ---------------------
 ## Description
